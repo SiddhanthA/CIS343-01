@@ -1,5 +1,5 @@
 ## Language design
-The language is named Volt. It is a small language based on Lox, implemented in Python. Lab 1 implements scanning, which converts source text into tokens. Lab 2 adds expression classes and an AST printer that displays hard-coded expressions using parentheses.
+The language is named Volt. It is a small language based on Lox, implemented in Python. Lab 1 implements scanning, which converts source text into tokens. Lab 2 adds expression classes and an AST printer that displays hard-coded expressions using parentheses. Lab 3 adds a parser that builds expression trees from source text instead of hard-coded expressions. 
 
 | Variable keyword | `let` replaces Lox's `var` |
 | Output keyword | `say` replaces Lox's `print` | 
@@ -37,14 +37,19 @@ The leading `#` keeps the lab's `//` markers valid in Python.
 Volt follows Lox's expression grammar and adds `%` for remainder.
 Supported literals are numbers, strings, booleans, and nil.
 
+Precedence from highest to lowest is: literals and grouping; unary operators; multiplication, division, and remainder; addition and subtraction; comparisons; and equality. Binary operators associate to the left, while unary operators associate to the right.
+
+Lab 3 also requires the complete input to follow input -> expression EOF, so extra tokens are rejected. Each input contains one expression without a semicolon.
+
 ## Implementation
 All implementation files are in `src/`:
 
 - `tokens.py` defines 40 token types and the `Token` class.
 - `scanner.py` recognizes tokens and records lexical errors.
-- `main.py` defines the `Volt` entry-point class and `main()` function.
+- `main.py` defines the `Volt` entry-point class and `main()` function. It also connects the scanner, parser, and AST printer. The optional --scan mode prints tokens for earlier scanner tests.
 - `expr.py` defines Literal, Unary, Binary, and Grouping expressions.
 - `ast_printer.py` prints expressions using parentheses to show their hierarchy.
+- `parser.py` builds expression trees and checks precedence, associativity, grouping, and unexpected tokens.
 
 Each token stores its type, raw lexeme, converted literal and starting line.
 The printed format is `TYPE lexeme literal (line N)`. Quotes and backslashes in
@@ -52,6 +57,7 @@ the output make empty strings and embedded newlines visible.
 
 The expression classes store literal values, operators, operands, and
 grouped expressions.
+
 
 ## Setup and commands
 Use Python 3. No third-party packages are required. Open a terminal in the
@@ -161,6 +167,9 @@ Test 15: Nested binary expressions
 Test 16: Nested unary expressions
 (- (- 5))
 
+**example results for parser.py**
+input: 1 + 2 * 3
+output: (+ 1.0 (* 2.0 3.0))
 
 ## AI assistance
 The tests were prepared with AI assistance using the following comment inclusions:
