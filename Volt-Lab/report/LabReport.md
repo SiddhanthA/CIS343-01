@@ -39,17 +39,29 @@ Supported literals are numbers, strings, booleans, and nil.
 
 Precedence from highest to lowest is: literals and grouping; unary operators; multiplication, division, and remainder; addition and subtraction; comparisons; and equality. Binary operators associate to the left, while unary operators associate to the right.
 
-Lab 3 also requires the complete input to follow input -> expression EOF, so extra tokens are rejected. Each input contains one expression without a semicolon.
+Lab 3 requires the complete input to follow input -> expression EOF, so extra tokens are rejected. Each input contains one expression without a semicolon.
+
+Lab 4 allows multiple statements in one input. Each statement ends with a semicolon. A `say` statement prints an expression's value, while an expression statement evaluates the expression without printing its result. The expression grammar and operator precedence remain the same.
+
+```text
+program        → statement* EOF ;
+statement      → expressionStmt | printStmt ;
+expressionStmt → expression ";" ;
+printStmt      → "say" expression ";" ;
+```
+
 
 ## Implementation
 All implementation files are in `src/`:
 
 - `tokens.py` defines 40 token types and the `Token` class.
 - `scanner.py` recognizes tokens and records lexical errors.
-- `main.py` defines the `Volt` entry-point class and `main()` function. It also connects the scanner, parser, and AST printer. The optional --scan mode prints tokens for earlier scanner tests.
+- `main.py` defines the `Volt` entry-point class and `main()` function. It also connects the scanner, parser, and AST printer, and interpreter. The optional --scan mode prints tokens for earlier scanner tests.
 - `expr.py` defines Literal, Unary, Binary, and Grouping expressions.
 - `ast_printer.py` prints expressions using parentheses to show their hierarchy.
-- `parser.py` builds expression trees and checks precedence, associativity, grouping, and unexpected tokens.
+- `parser.py` builds expression and statement trees. It records syntax errors and skips tokens to a likely statement boundary so parsing can continue.
+- `stmt.py` defines the Expression and Print statement classes.
+- `interpreter.py` evaluates expressions and executes statements. It checks operand types and reports runtime errors. 
 
 Each token stores its type, raw lexeme, converted literal and starting line.
 The printed format is `TYPE lexeme literal (line N)`. Quotes and backslashes in
@@ -63,30 +75,18 @@ grouped expressions.
 Use Python 3. No third-party packages are required. Open a terminal in the
 repository folder, the folder containing `src`, `test`, and `report`.
 
-Run a source file:
-```text
-python src/main.py test/example.volt
-```
+| Purpose             | Command                                       |
+|---------------------|-----------------------------------------------|
+| Lab 4 error test    | `python src/main.py test/errors.volt`         |
+| Lab 4 valid test    | `python src/main.py test/statements.volt`     |
+| Interactive mode    | `python src/main.py`                          |
+| Old scanner example | `python src/main.py --scan test/example.volt` |
+| Scanner tests       | `python test/tests.py`                        |
+| AST examples        | `python test/ast_examples.py`                 |
 
-Start interactive mode:
-```text
-python src/main.py
-```
 
-Reproduce the tests and regenerate the detailed results:
-
-```text
-python test/lab1/run_tests.py
-```
-
-Run the Lab 2 AST printer tests:
-
-```text
-python test/lab2/ast_examples.py
-```
 
 ## Tests and Results
-
 **Results for tests.py:**
 PASS 01_empty_input
 PASS 02_whitespace
@@ -170,6 +170,17 @@ Test 16: Nested unary expressions
 **example results for parser.py**
 input: 1 + 2 * 3
 output: (+ 1.0 (* 2.0 3.0))
+
+**Lab 4 test results**
+PS C:\Users\Sid\Desktop\Volt-Lab> python src/main.py test/errors.volt
+[line 2] Error at 'true': Expected ';' after expression.
+[line 3] Error at end: Expected an expression.
+
+PS C:\Users\Sid\Desktop\Volt-Lab> python src/main.py test/statements.volt 
+one
+true
+3
+nil
 
 ## AI assistance
 The tests were prepared with AI assistance using the following comment inclusions:

@@ -42,7 +42,7 @@ def main():
     with TemporaryDirectory() as temporary_folder:
         for case in CASES:
             mode = case.get("mode", "file")
-            command = [sys.executable, str(MAIN)]
+            command = [sys.executable, str(MAIN), "--scan"]
             if mode == "file":
                 path = Path(temporary_folder) / (case["name"] + ".volt")
                 path.write_bytes(case["source"].encode("utf-8"))

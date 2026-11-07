@@ -1,15 +1,18 @@
 import sys
-from ast_printer import AstPrinter
-from parser import ParseError, Parser
+from interpreter import Interpreter, VoltRuntimeError
+from parser import Parser
 from scanner import Scanner
 
 class Volt:
     def __init__(self, scan_only=False):
         self.had_error = False
+        self.had_runtime_error = False
         self.scan_only = scan_only
+        self.interpreter = Interpreter()
 
     def run(self, source):
         self.had_error = False
+        self.had_runtime_error = False
         scanner = Scanner(source)
         tokens = scanner.scan_tokens()
 
@@ -28,19 +31,26 @@ class Volt:
 
         parser = Parser(tokens)
         try:
-            expression = parser.parse()
-            output = AstPrinter().print(expression)
-        except ParseError as error:
-            print(error, file=sys.stderr)
-            self.had_error = True
-            return
+            statements = parser.parse()
         except RecursionError:
-            error = parser.error(parser.peek(), "Expression is nested too deeply.")
-            print(error, file=sys.stderr)
+            parser.errors.append(
+                parser.error(parser.peek(), "Expression is nested too deeply.")
+            )
+
+        if parser.errors:
+            for error in parser.errors:
+                print(error, file=sys.stderr)
             self.had_error = True
             return
 
-        print(output)
+        try:
+            self.interpreter.interpret(statements)
+        except VoltRuntimeError as error:
+            print(error, file=sys.stderr)
+            self.had_runtime_error = True
+        except RecursionError:
+            print("Runtime error: Expression is nested too deeply.", file=sys.stderr)
+            self.had_runtime_error = True
 
     def run_file(self, path):
         try:
@@ -51,10 +61,14 @@ class Volt:
             return 74
 
         self.run(source)
-        return 65 if self.had_error else 0
+        if self.had_error:
+            return 65
+        if self.had_runtime_error:
+            return 70
+        return 0
 
     def run_prompt(self):
-        mode = "scanner" if self.scan_only else "parser"
+        mode = "scanner" if self.scan_only else "interpreter"
         print(f"Volt {mode}. Press Ctrl+C to exit.")
         while True:
             try:

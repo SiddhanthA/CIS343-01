@@ -1,4 +1,5 @@
 from expr import Binary, Grouping, Literal, Unary
+from stmt import Expression, Print
 from tokens import TokenType
 
 class ParseError(Exception):
@@ -8,14 +9,41 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.current = 0
+        self.errors = []
 
     def parse(self):
+        statements = []
+        while not self.check(TokenType.EOF):
+            try:
+                statements.append(self.statement())
+            except ParseError as error:
+                self.errors.append(error)
+                self.synchronize()
+        return statements
+
+    def statement(self):
+        if self.match(TokenType.SAY):
+            return self.print_statement()
+        return self.expression_statement()
+
+    def print_statement(self):
         expression = self.expression()
-        if not self.check(TokenType.EOF):
-            if self.check(TokenType.RIGHT_PAREN):
-                raise self.error(self.peek(), "Unmatched ')'.")
-            raise self.error(self.peek(), "Unexpected token after expression.")
-        return expression
+        self.consume(TokenType.SEMICOLON, "Expected ';' after value.")
+        return Print(expression)
+
+    def expression_statement(self):
+        expression = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expected ';' after expression.")
+        return Expression(expression)
+
+    def synchronize(self):
+        self.advance()
+        while not self.check(TokenType.EOF):
+            if self.previous().type == TokenType.SEMICOLON:
+                return
+            if self.check(TokenType.SAY):
+                return
+            self.advance()
 
     def expression(self):
         return self.equality()
