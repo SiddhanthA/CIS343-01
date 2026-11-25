@@ -1,12 +1,12 @@
-from expr import Binary, Grouping, Literal, Unary
-from stmt import Expression, Print
+from environment import Environment, VoltRuntimeError
+from expr import Assign, Binary, Grouping, Literal, Unary, Variable
+from stmt import Block, Expression, Let, Print
 from tokens import TokenType
 
-class VoltRuntimeError(Exception):
-    def __init__(self, token, message):
-        super().__init__(f"[line {token.line}] Runtime error: {message}")
-
 class Interpreter:
+    def __init__(self):
+        self.environment = Environment()
+
     def interpret(self, statements):
         for statement in statements:
             self.execute(statement)
@@ -17,10 +17,30 @@ class Interpreter:
             print(self.stringify(value))
         elif isinstance(statement, Expression):
             self.evaluate(statement.expression)
+        elif isinstance(statement, Let):
+            value = None
+            if statement.initializer is not None:
+                value = self.evaluate(statement.initializer)
+            self.environment.define(statement.name, value)
+        elif isinstance(statement, Block):
+            outer = self.environment
+            self.environment = Environment(outer)
+            try:
+                self.interpret(statement.statements)
+            finally:
+                self.environment = outer
 
     def evaluate(self, expression):
         if isinstance(expression, Literal):
             return expression.value
+
+        if isinstance(expression, Variable):
+            return self.environment.get(expression.name)
+
+        if isinstance(expression, Assign):
+            value = self.evaluate(expression.value)
+            self.environment.assign(expression.name, value)
+            return value
 
         if isinstance(expression, Grouping):
             return self.evaluate(expression.expression)

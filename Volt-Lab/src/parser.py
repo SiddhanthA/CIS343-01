@@ -1,5 +1,5 @@
-from expr import Binary, Grouping, Literal, Unary
-from stmt import Expression, Print
+from expr import Assign, Binary, Grouping, Literal, Unary, Variable
+from stmt import Block, Expression, Let, Print
 from tokens import TokenType
 
 class ParseError(Exception):
@@ -12,16 +12,38 @@ class Parser:
         self.errors = []
 
     def parse(self):
+        return self.statement_list(in_block=False)
+
+    def statement_list(self, in_block):
         statements = []
         while not self.check(TokenType.EOF):
+            if self.check(TokenType.RIGHT_BRACE):
+                if in_block:
+                    break
+                self.errors.append(self.error(self.advance(), "Unmatched '}'."))
+                continue
             try:
-                statements.append(self.statement())
+                statements.append(self.declaration())
             except ParseError as error:
                 self.errors.append(error)
                 self.synchronize()
         return statements
 
+    def declaration(self):
+        if self.match(TokenType.LET):
+            name = self.consume(TokenType.IDENTIFIER, "Expected a variable name after 'let'.")
+            initializer = None
+            if self.match(TokenType.EQUAL):
+                initializer = self.expression()
+            self.consume(TokenType.SEMICOLON, "Expected ';' after variable declaration.")
+            return Let(name, initializer)
+        return self.statement()
+
     def statement(self):
+        if self.match(TokenType.LEFT_BRACE):
+            statements = self.statement_list(in_block=True)
+            self.consume(TokenType.RIGHT_BRACE, "Expected '}' after block.")
+            return Block(statements)
         if self.match(TokenType.SAY):
             return self.print_statement()
         return self.expression_statement()
@@ -37,16 +59,26 @@ class Parser:
         return Expression(expression)
 
     def synchronize(self):
-        self.advance()
         while not self.check(TokenType.EOF):
-            if self.previous().type == TokenType.SEMICOLON:
+            if self.match(TokenType.SEMICOLON):
                 return
-            if self.check(TokenType.SAY):
+            if self.peek().type in (TokenType.LET, TokenType.SAY,
+                                    TokenType.LEFT_BRACE, TokenType.RIGHT_BRACE):
                 return
             self.advance()
 
     def expression(self):
-        return self.equality()
+        return self.assignment()
+
+    def assignment(self):
+        left = self.equality()
+        if self.match(TokenType.EQUAL):
+            equals = self.previous()
+            value = self.assignment()
+            if not isinstance(left, Variable):
+                raise self.error(equals, "Invalid assignment target.")
+            return Assign(left.name, value)
+        return left
 
     def equality(self):
         expression = self.comparison()
@@ -89,6 +121,8 @@ class Parser:
         return self.primary()
 
     def primary(self):
+        if self.match(TokenType.IDENTIFIER):
+            return Variable(self.previous())
         if self.match(TokenType.FALSE):
             return Literal(False)
         if self.match(TokenType.TRUE):
